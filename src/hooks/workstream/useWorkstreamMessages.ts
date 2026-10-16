@@ -12,7 +12,7 @@ export interface UseWorkstreamMessagesOptions {
   setMessages?: Dispatch<SetStateAction<Message[]>>;
   /** Used as the sender of optimistic messages so they render on the sender's side immediately. */
   currentUserId?: string;
-  /** Active order ID for the workstream, used as fallback if activeFetchOrderIdRef hasn't run yet. */
+  /** Active order ID for the workstream currently on screen. Takes priority over fetch cache refs. */
   activeOrderId?: string;
 }
 
@@ -83,7 +83,7 @@ export function useWorkstreamMessages(options: UseWorkstreamMessagesOptions = {}
   }, []);
 
   const sendMessage = useCallback(async (text: string, type: string = 'text', fileInfo?: any, targetOrderId?: string) => {
-    const activeOrderId = targetOrderId || activeFetchOrderIdRef.current || activeOrderIdRef.current;
+    const activeOrderId = targetOrderId || activeOrderIdRef.current || activeFetchOrderIdRef.current;
     if (!activeOrderId || !text.trim()) return;
 
     const token = getAuthToken();

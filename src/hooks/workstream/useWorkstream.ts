@@ -38,11 +38,14 @@ export function useWorkstream(props?: any) {
     activeOrderId: currentSelectedOrder?.id
   });
   
+  const currentSelectedOrderRef = useRef(currentSelectedOrder);
+  currentSelectedOrderRef.current = currentSelectedOrder;
+  
   const onReconnect = useCallback(() => {
-    if (currentSelectedOrder) {
-      messages.fetchMessages(currentSelectedOrder.id);
+    if (currentSelectedOrderRef.current) {
+      messages.fetchMessages(currentSelectedOrderRef.current.id);
     }
-  }, [currentSelectedOrder, messages.fetchMessages]);
+  }, [messages.fetchMessages]);
 
   const ordersRef = useRef<any[] | undefined>(props?.orders);
   ordersRef.current = props?.orders;

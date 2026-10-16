@@ -4013,9 +4013,9 @@ export default function App() {
                       setSelectedOrder(null);
                       navigate('/messages');
                     }}
-                    onSendMessage={(text) => sendMessage(text, 'message')}
+                    onSendMessage={(text) => sendMessage(text, 'message', undefined, activeWsOrder.id)}
                     onRetryMessage={(msg) => retryMessage(msg as any)}
-                    onAttachFile={(file) => sendMessage(`Attached file: ${file.name}`, 'file', file)}
+                    onAttachFile={(file) => sendMessage(`Attached file: ${file.name}`, 'file', file, activeWsOrder.id)}
                     onReleaseEscrow={handleReleaseEscrow}
                     onDeliverWork={handleDeliverWork}
                     onRequestRevision={handleRequestRevision}

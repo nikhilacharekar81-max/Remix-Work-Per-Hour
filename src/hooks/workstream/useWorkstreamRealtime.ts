@@ -32,6 +32,8 @@ export function useWorkstreamRealtime({
   onOrderStateChanged
 }: UseWorkstreamRealtimeProps) {
   const wsRef = useRef<WebSocket | null>(null);
+  const onReconnectRef = useRef(onReconnect);
+  onReconnectRef.current = onReconnect;
   const hasOrderRef = useRef(hasOrder);
   hasOrderRef.current = hasOrder;
   const onUnknownOrderRef = useRef(onUnknownOrder);
@@ -59,7 +61,7 @@ export function useWorkstreamRealtime({
       socket.onopen = () => {
         console.log('Workstream WebSocket connected, authenticating...');
         socket.send(JSON.stringify({ type: 'AUTHENTICATE', token }));
-        if (onReconnect) onReconnect();
+        if (onReconnectRef.current) onReconnectRef.current();
       };
 
       socket.onmessage = (event) => {
