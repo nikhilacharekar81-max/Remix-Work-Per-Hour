@@ -1705,13 +1705,21 @@ function loadInitialOrdersAndMessages() {
     try {
       const data = fs.readFileSync(MESSAGES_FILE, 'utf-8');
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
-        messages = parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const existingIds = new Set(parsed.map((m: any) => m.id));
+        const merged = [...SEED_MESSAGES.filter(m => !existingIds.has(m.id)), ...parsed];
+        messages = merged;
+      } else {
+        messages = [...SEED_MESSAGES];
       }
     } catch (e) {
       handleCorruption(MESSAGES_FILE, e);
     }
+  } else {
+    messages = [...SEED_MESSAGES];
   }
+  messages.forEach(registerMessage);
+  saveMessagesToDisk();
 
   // 3. Load Reviews
   if (fs.existsSync(REVIEWS_FILE)) {
@@ -4996,6 +5004,58 @@ app.post('/api/messages', requireAuth, (req, res) => {
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Failed to send message' });
   }
+});
+
+// Admin Message Threads Moderation & Dispute Audit
+app.get('/api/admin/messages/threads', requireAdmin, (req, res) => {
+  const threads = orders.map(order => {
+    const buyer = users.find(u => u.id === order.buyerId);
+    const seller = users.find(u => u.id === order.sellerId);
+    const orderMessages = messageIndex.get(order.id) || [];
+    const lastMsg = orderMessages[orderMessages.length - 1];
+
+    return {
+      id: order.id,
+      orderId: order.id,
+      projectId: order.projectId,
+      projectOrGigTitle: order.title,
+      participantOne: {
+        id: buyer?.id || order.buyerId,
+        name: buyer?.name || order.buyerUsername || 'Buyer',
+        avatar: buyer?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
+        role: 'client' as const,
+        email: buyer?.email || 'buyer@example.com',
+        status: (buyer?.status || 'active') as any
+      },
+      participantTwo: {
+        id: seller?.id || order.sellerId,
+        name: seller?.name || order.sellerUsername || 'Seller',
+        avatar: seller?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
+        role: 'freelancer' as const,
+        email: seller?.email || 'seller@example.com',
+        status: (seller?.status || 'active') as any
+      },
+      lastMessageSnippet: lastMsg?.text || (orderMessages.length > 0 ? 'Attachment' : 'No messages in workstream'),
+      lastMessageTime: lastMsg?.timestamp || order.createdAt,
+      totalMessages: orderMessages.length,
+      moderationStatus: 'clean' as const,
+      flaggedCount: 0,
+      messages: orderMessages.map(m => {
+        const sender = users.find(u => u.id === m.senderId);
+        return {
+          id: m.id,
+          senderId: m.senderId,
+          senderName: m.senderName || sender?.name || 'Participant',
+          senderAvatar: sender?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+          senderRole: (m.senderId === order.buyerId ? 'client' : 'freelancer') as const,
+          text: m.text,
+          timestamp: m.timestamp
+        };
+      })
+    };
+  });
+
+  res.json(threads);
 });
 
 app.post('/api/gigs', requireAuth, (req, res) => {
