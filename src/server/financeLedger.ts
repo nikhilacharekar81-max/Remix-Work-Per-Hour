@@ -59,6 +59,7 @@ export interface LedgerJournal {
   eventType: 
     | 'DEPOSIT_SETTLED'
     | 'ORDER_ESCROW_FUNDED'
+    | 'ORDER_ESCROW_TOPUP'
     | 'ESCROW_RELEASED_TO_FREELANCER'
     | 'ESCROW_REFUNDED_TO_BUYER'
     | 'ESCROW_REFUNDED_WITH_FEES'
@@ -710,6 +711,55 @@ export class FinanceLedgerEngine {
     });
     this.audit({ actor: params.actor, role: 'system', action: 'ESCROW_FUNDS_LOCKED', target: `Order #${params.orderId}`, reason: `Locked $${amount.toFixed(2)} in escrow; client charged $${fees.clientTotal.toFixed(2)} total (service fee $${fees.serviceFee.toFixed(2)}, small-order fee $${fees.smallOrderFee.toFixed(2)})`, journalId: journal.id });
     return { journal, escrow: this.escrows.get(params.orderId)!, fees };
+  }
+
+  // Tops up an already funded escrow for an order with additional funds under the same orderId.
+  public topUpEscrow(params: { orderId: string; orderTitle: string; amount: number; buyerId: string; sellerId: string; actor: string; timestamp?: string; skipMinimum?: boolean }) {
+    if (!params.orderId) throw new Error('orderId is required.');
+    const esc = this.escrows.get(params.orderId);
+    if (!esc) {
+      return this.fundEscrow(params);
+    }
+    if (esc.status !== 'held') throw new Error(`Escrow for order ${params.orderId} is not in held status (${esc.status}).`);
+    const amount = FinanceLedgerEngine.assertMoney(params.amount, 'Top-up amount');
+    const buyer = this.requireWallet(params.buyerId);
+    const seller = this.requireWallet(params.sellerId);
+    if (buyer.status === 'frozen') throw new Error('Buyer wallet is frozen.');
+    if (seller.status === 'frozen') throw new Error('Seller wallet is frozen.');
+
+    const fees = calculateOrderFees(amount, this.getFeeConfig());
+    if (buyer.availableBalance < fees.clientTotal) {
+      throw new Error(`Insufficient wallet balance. Available $${buyer.availableBalance.toFixed(2)}, required $${fees.clientTotal.toFixed(2)} (top-up $${fees.gigPrice.toFixed(2)} + fees $${(fees.serviceFee + fees.smallOrderFee).toFixed(2)}). Please add funds.`);
+    }
+
+    const fundEntries: Array<{ accountCode: string; debit: number; credit: number; currency: string; description: string; userId?: string; orderId?: string }> = [
+      { accountCode: this.walletAccount(buyer), debit: fees.clientTotal, credit: 0, currency: DEFAULT_CURRENCY, description: 'Debited buyer wallet for escrow top-up price and client fees', userId: buyer.userId, orderId: params.orderId },
+      { accountCode: '2030', debit: 0, credit: fees.gigPrice, currency: DEFAULT_CURRENCY, description: 'Added to escrow protection vault', orderId: params.orderId }
+    ];
+    if (fees.serviceFee > 0) {
+      fundEntries.push({ accountCode: '4020', debit: 0, credit: fees.serviceFee, currency: DEFAULT_CURRENCY, description: `${this.buyerFeePercent}% client service fee on escrow top-up for Order #${params.orderId}`, orderId: params.orderId });
+    }
+    if (fees.smallOrderFee > 0) {
+      fundEntries.push({ accountCode: '4030', debit: 0, credit: fees.smallOrderFee, currency: DEFAULT_CURRENCY, description: `Small-order fee on escrow top-up for Order #${params.orderId}`, orderId: params.orderId });
+    }
+
+    const journal = this.postJournal({
+      reference: `ORD-${params.orderId}-ESCROW-TOPUP-${Date.now()}`,
+      description: `Escrow top-up for Order #${params.orderId} (${params.orderTitle})`,
+      eventType: 'ORDER_ESCROW_TOPUP',
+      idempotencyKey: `IDEMP-ORD-TOPUP-${params.orderId}-${Date.now()}`,
+      actor: params.actor,
+      timestamp: params.timestamp,
+      entries: fundEntries
+    });
+    buyer.fundsOnHold = FinanceLedgerEngine.round(buyer.fundsOnHold + amount);
+    esc.amount = FinanceLedgerEngine.round(esc.amount + amount);
+    esc.remaining = FinanceLedgerEngine.round(esc.remaining + amount);
+    esc.serviceFee = FinanceLedgerEngine.round(esc.serviceFee + fees.serviceFee);
+    esc.smallOrderFee = FinanceLedgerEngine.round(esc.smallOrderFee + fees.smallOrderFee);
+
+    this.audit({ actor: params.actor, role: 'system', action: 'ESCROW_FUNDS_TOPPED_UP', target: `Order #${params.orderId}`, reason: `Added $${amount.toFixed(2)} to escrow; client charged $${fees.clientTotal.toFixed(2)} total`, journalId: journal.id });
+    return { journal, escrow: esc, fees };
   }
 
   // Releases everything still held for the order: net to seller, commission to the platform.

@@ -5047,7 +5047,7 @@ app.get('/api/admin/messages/threads', requireAdmin, (req, res) => {
           senderId: m.senderId,
           senderName: m.senderName || sender?.name || 'Participant',
           senderAvatar: sender?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-          senderRole: (m.senderId === order.buyerId ? 'client' : 'freelancer') as const,
+          senderRole: (m.senderId === order.buyerId ? 'client' : 'freelancer') as ('client' | 'freelancer'),
           text: m.text,
           timestamp: m.timestamp
         };
@@ -5783,7 +5783,6 @@ app.post('/api/offers/:id/:action(accept|decline|cancel)', requireAuth, rateLimi
     ensureWallet(order.buyerId); ensureWallet(order.sellerId);
     const today = now.split('T')[0];
     const protectionEnd = new Date(Date.now() + siteSettings.getSettings().commission.escrowProtectionDays * 86400000).toISOString().split('T')[0];
-    let newOrder: any;
     const isInitialFunding = !orderHasEscrow(order.id);
 
     if (offer.kind === 'invoice') {
@@ -5820,31 +5819,30 @@ app.post('/api/offers/:id/:action(accept|decline|cancel)', requireAuth, rateLimi
       offer.status = 'accepted';
       postOfferMessage(order, offer, null, `${offer.number} was accepted and escrow was funded ($${offer.amount}).`, 'offer_accepted');
     } else {
-      // Escrow is already funded, this is a separate new work order.
-      const addOrderId = 'ord_' + randomUUID().slice(0, 12);
-      const addOrderTitle = offer.title;
-      financeLedger.fundEscrow({ orderId: addOrderId, orderTitle: addOrderTitle, amount: offer.amount, buyerId: order.buyerId, sellerId: order.sellerId, actor: `user:${order.buyerId}` });
-      const addOrder: Order = {
-        id: addOrderId, title: addOrderTitle, buyerId: order.buyerId, sellerId: order.sellerId, amount: offer.amount,
-        status: 'funded_in_escrow', createdAt: today,
-        dueDate: new Date(Date.now() + (offer.deliveryDays || 7) * 86400000).toISOString().split('T')[0],
-        escrowProtectionStartDate: today, escrowProtectionEndDate: protectionEnd,
-        gigId: order.gigId, projectId: order.projectId,
-        feeBreakdown: financeLedger.quoteOrder(offer.amount)
-      };
-      newOrder = enrichOrderWithServiceInfo(addOrder);
-      recordOrder(newOrder);
-      offer.orderId = newOrder.id;
+      // Escrow is already funded: top up existing order's escrow directly under the primary orderId (no secondary order ID).
+      financeLedger.topUpEscrow({
+        orderId: order.id,
+        orderTitle: offer.title,
+        amount: offer.amount,
+        buyerId: order.buyerId,
+        sellerId: order.sellerId,
+        actor: `user:${order.buyerId}`
+      });
+      order.amount = FinanceLedgerEngine.round(Number(order.amount || 0) + offer.amount);
+      order.feeBreakdown = financeLedger.quoteOrder(order.amount);
+      if (offer.kind === 'proposal' && offer.deliveryDays) {
+        order.dueDate = new Date(Date.now() + offer.deliveryDays * 86400000).toISOString().split('T')[0];
+      }
+      offer.orderId = order.id;
       offer.status = 'accepted';
-      postOfferMessage(newOrder, offer, null, `${offer.number} was accepted. A new funded workstream was created with $${offer.amount} in escrow.`, 'offer_accepted');
-      postOfferMessage(order, offer, null, `${offer.number} was accepted. A new funded workstream was created for the additional work.`, 'offer_accepted');
+      postOfferMessage(order, offer, null, `${offer.number} was accepted and escrow was topped up with $${offer.amount}. All funds and milestones remain unified under Order #${order.id}.`, 'offer_accepted');
     }
 
     offer.resolvedAt = now; offer.resolvedBy = caller.id;
     syncUserBalances();
     saveOrdersToDisk();
     saveOffersToDisk();
-    res.json({ offer: viewOffer(offer), order: enrichOrderWithServiceInfo(order), newOrder });
+    res.json({ offer: viewOffer(offer), order: enrichOrderWithServiceInfo(order) });
   } catch (err: any) {
     // fundEscrow throws on insufficient balance, frozen wallets, below-minimum amounts, etc. Nothing was changed.
     res.status(400).json({ error: err.message });
