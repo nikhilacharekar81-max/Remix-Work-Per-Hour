@@ -153,7 +153,7 @@ async function runTests() {
   const invoiceRes = await api(`/api/orders/${orderB.id}/offers`, {
     method: 'POST',
     token: sellerToken,
-    body: { kind: 'invoice', title: 'Premature Final Invoice', amount: 50 }
+    body: { kind: 'invoice', title: 'Premature Final Invoice', amount: 500 }
   });
   assert.strictEqual(invoiceRes.status, 201);
   const offerId = invoiceRes.json.offer.id;

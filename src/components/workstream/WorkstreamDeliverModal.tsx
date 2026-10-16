@@ -154,6 +154,13 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
             </div>
           </div>
 
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl text-[11px] text-amber-800 flex items-start gap-2">
+            <Receipt className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Gig Invoice Policy:</span> Final invoices for gig orders must equal or exceed the funded gig price (${order.amount.toLocaleString()}). Sellers cannot raise an invoice for less than the gig price or edit it below this threshold.
+            </div>
+          </div>
+
           <div className="p-3 bg-blue-50/70 text-[11px] text-blue-800 rounded-2xl border border-blue-200 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
             <span>Submitting your invoice and deliverables initiates the buyer review period to approve and release the funded escrow (${order.amount.toLocaleString()}).</span>

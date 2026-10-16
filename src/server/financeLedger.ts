@@ -1035,6 +1035,42 @@ export class FinanceLedgerEngine {
     return this.remember(params.requestKey, { journal, wallet });
   }
 
+  // Pays a standalone custom invoice by transferring funds from buyer wallet to seller wallet
+  public payCustomInvoice(params: { invoiceId: string; buyerId: string; sellerId: string; amount: number; title: string; actor: string }) {
+    const amount = FinanceLedgerEngine.assertMoney(params.amount, 'Invoice amount');
+    if (params.buyerId === params.sellerId) throw new Error('A user cannot pay an invoice to themselves.');
+    const buyer = this.requireWallet(params.buyerId);
+    const seller = this.requireWallet(params.sellerId);
+    if (buyer.status === 'frozen') throw new Error('Buyer wallet is frozen.');
+    if (seller.status === 'frozen') throw new Error('Seller wallet is frozen.');
+    if (buyer.availableBalance < amount) {
+      throw new Error(`Insufficient wallet balance. Available $${buyer.availableBalance.toFixed(2)}, required $${amount.toFixed(2)}.`);
+    }
+
+    const buyerAcct = this.walletAccount(buyer);
+    const sellerAcct = this.walletAccount(seller);
+
+    const entries = [
+      { accountCode: buyerAcct, debit: amount, credit: 0, currency: DEFAULT_CURRENCY, description: `Paid custom invoice #${params.invoiceId} (${params.title})`, userId: buyer.userId },
+      { accountCode: sellerAcct, debit: 0, credit: amount, currency: DEFAULT_CURRENCY, description: `Received payment for custom invoice #${params.invoiceId} (${params.title})`, userId: seller.userId }
+    ];
+
+    const journal = this.postJournal({
+      reference: `INV-PAY-${params.invoiceId}`,
+      description: `Payment for custom invoice #${params.invoiceId} (${params.title})`,
+      eventType: 'DEPOSIT_SETTLED',
+      idempotencyKey: `IDEMP-INV-PAY-${params.invoiceId}`,
+      actor: params.actor,
+      entries
+    });
+
+    buyer.availableBalance = FinanceLedgerEngine.round(buyer.availableBalance - amount);
+    seller.availableBalance = FinanceLedgerEngine.round(seller.availableBalance + amount);
+
+    this.audit({ actor: params.actor, role: 'system', action: 'CUSTOM_INVOICE_PAID', target: `Invoice #${params.invoiceId}`, reason: `Paid $${amount.toFixed(2)} from ${buyer.userName} to ${seller.userName}`, journalId: journal.id });
+    return { journal, buyer, seller };
+  }
+
   public previewAdjustment(params: { userId: string; amount: number; direction: 'credit_user' | 'debit_user'; category: string; reason: string }) {
     const wallet = this.requireWallet(params.userId);
     const amount = FinanceLedgerEngine.assertMoney(params.amount, 'Adjustment amount');

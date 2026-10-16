@@ -2622,6 +2622,16 @@ app.post('/api/orders/:id/dispute', requireAuth, (req, res) => {
     if (order.buyerId !== authUserId && order.sellerId !== authUserId) {
       return res.status(403).json({ error: 'Forbidden: Only order participants can open a dispute.' });
     }
+    if (order.status === 'completed' || order.status === 'cancelled') {
+      return res.status(409).json({ error: `Cannot open a dispute: this order is already ${order.status}.` });
+    }
+    if (order.status === 'disputed') {
+      return res.status(409).json({ error: 'This order is already under dispute.' });
+    }
+    const disputeEscrow = financeLedger.getEscrow(order.id);
+    if (!disputeEscrow || disputeEscrow.status !== 'held' || disputeEscrow.remaining <= 0) {
+      return res.status(409).json({ error: 'Cannot open a dispute: there is no active escrow held for this order.' });
+    }
     const rawReason = (req.body.reason || '').trim();
     if (!rawReason) {
       return res.status(400).json({ error: 'A dispute reason is required.' });
@@ -2929,7 +2939,17 @@ interface CustomInvoice {
 
 let savedPaymentMethods: PaymentMethodRecord[] = [];
 
+const CUSTOM_INVOICES_FILE = path.join(DATA_DIR, 'custom_invoices.json');
 let customInvoices: CustomInvoice[] = [];
+try {
+  if (fs.existsSync(CUSTOM_INVOICES_FILE)) {
+    const parsed = JSON.parse(fs.readFileSync(CUSTOM_INVOICES_FILE, 'utf-8'));
+    if (Array.isArray(parsed)) customInvoices = parsed;
+  }
+} catch (e) {
+  console.error('Failed to load custom invoices:', e);
+}
+function saveCustomInvoicesToDisk() { writeJsonAtomic(CUSTOM_INVOICES_FILE, customInvoices); }
 
 // User Financial Overview Snapshot
 app.get('/api/payments/user/:userId', requireAuth, (req, res) => {
@@ -3508,7 +3528,7 @@ app.post('/api/payments/invoices', requireAuth, (req, res) => {
     }
     const cleanItems = (items && items.length > 0) ? items : [{ description: title, quantity: 1, unitPrice: 100, amount: 100 }];
     const subtotal = cleanItems.reduce((s: number, it: any) => s + (Number(it.amount) || (Number(it.quantity || 1) * Number(it.unitPrice || 0))), 0);
-    const platformFee = Number((subtotal * 0.075).toFixed(2));
+    const platformFee = 0;
     const total = subtotal;
 
     const newInvoice: CustomInvoice = {
@@ -3529,7 +3549,35 @@ app.post('/api/payments/invoices', requireAuth, (req, res) => {
       notes: notes || 'Standard WorkPerHour Invoice'
     };
     customInvoices.unshift(newInvoice);
+    saveCustomInvoicesToDisk();
     res.status(201).json(newInvoice);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Pay Custom Invoice
+app.post('/api/payments/invoices/:id/pay', requireAuth, (req, res) => {
+  try {
+    const authUserId = (req as any).authenticatedUserId;
+    const invoice = customInvoices.find(i => i.id === req.params.id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
+    if (invoice.status === 'paid') return res.status(400).json({ error: 'Invoice is already paid.' });
+    if (invoice.userId === authUserId) return res.status(400).json({ error: 'You cannot pay your own invoice.' });
+
+    financeLedger.payCustomInvoice({
+      invoiceId: invoice.id,
+      buyerId: authUserId,
+      sellerId: invoice.userId,
+      amount: invoice.total,
+      title: invoice.title,
+      actor: `user:${authUserId}`
+    });
+
+    invoice.status = 'paid';
+    saveCustomInvoicesToDisk();
+    syncUserBalances();
+    res.json({ success: true, invoice });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -5722,6 +5770,9 @@ app.post('/api/orders/:id/offers', requireAuth, rateLimit(20, 60_000), (req, res
     const funded = orderHasEscrow(order.id);
     if (kind === 'invoice') {
       if (!funded) return res.status(400).json({ error: 'Final invoices are for completed work on a funded workstream.' });
+      if (order.amount && amount < order.amount) {
+        return res.status(400).json({ error: `Final invoice amount cannot be less than the gig price ($${order.amount}).` });
+      }
       if (workstreamOffers.filter(o => o.orderId === order.id && o.kind === 'invoice' && o.status === 'pending').length >= 1) {
         return res.status(409).json({ error: 'A final invoice is already pending for this workstream.' });
       }

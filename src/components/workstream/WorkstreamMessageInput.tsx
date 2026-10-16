@@ -227,6 +227,15 @@ export const WorkstreamMessageInput: React.FC<WorkstreamMessageInputProps> = ({
               </div>
             </div>
 
+            {tab === 'invoice' && (
+              <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl text-[11px] text-amber-800 flex items-start gap-2">
+                <Receipt className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Gig Invoice Policy:</span> Final invoices for gig-based orders must equal or exceed the funded gig price. Sellers cannot raise an invoice for less than the gig price or edit it below this threshold.
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {tab !== 'deposit' && (
                 <div className="sm:col-span-2">
