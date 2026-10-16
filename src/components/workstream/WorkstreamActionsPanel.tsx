@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   ShieldCheck, ArrowRight, FileText, Paperclip, AlertTriangle, 
-  RotateCcw, CheckCircle2, PlusCircle, Settings, Send, Video, Star
+  RotateCcw, CheckCircle2, PlusCircle, Settings, Send, Video, Star, Receipt
 } from 'lucide-react';
 import { WorkstreamItem } from './types';
 import { UserAccount } from '../../types';
@@ -74,13 +74,13 @@ export const WorkstreamActionsPanel: React.FC<WorkstreamActionsPanelProps> = ({
         {isBuyer && !isCompleted && !isDelivered && (order.status === 'in_progress' || order.status === 'funded_in_escrow') && (
           <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl text-[11px] text-blue-800 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>Escrow funded (${order.amount.toLocaleString()}). Awaiting seller deliverables.</span>
+            <span>Escrow funded (${order.amount.toLocaleString()}). Awaiting seller invoice.</span>
           </div>
         )}
         {isBuyer && !isCompleted && order.status === 'revision' && (
           <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-2xl text-[11px] text-purple-800 flex items-center gap-2">
             <RotateCcw className="w-4 h-4 text-purple-600 shrink-0" />
-            <span>Revision requested. Seller is updating deliverables.</span>
+            <span>Revision requested. Seller is updating invoice.</span>
           </div>
         )}
         {isBuyer && (isCompleted || order.status === 'cancelled') && !order.review && (
@@ -144,8 +144,8 @@ export const WorkstreamActionsPanel: React.FC<WorkstreamActionsPanelProps> = ({
             className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold text-left flex items-center justify-between transition shadow-xs cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Send className="w-4 h-4 text-emerald-400" />
-              <span>{order.status === 'revision' ? 'Submit Revised Deliverables' : 'Submit Deliverable Files'}</span>
+              <Receipt className="w-4 h-4 text-emerald-400" />
+              <span>{order.status === 'revision' ? 'Submit Revised Invoice' : 'Submit Invoice'}</span>
             </div>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>

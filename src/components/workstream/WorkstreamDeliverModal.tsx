@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Send, Paperclip, FileText, CheckCircle2, Link as LinkIcon } from 'lucide-react';
+import { X, Receipt, Paperclip, FileText, CheckCircle2, Link as LinkIcon } from 'lucide-react';
 import { WorkstreamItem } from './types';
 import { uploadWorkstreamFile } from '../../utils/workstreamUpload';
 
@@ -20,7 +20,7 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
   onClose,
   onSubmitDelivery
 }) => {
-  const [notes, setNotes] = useState('Hi! I have completed all agreed deliverables for your review. Please inspect the submitted assets.');
+  const [notes, setNotes] = useState('Hi! I have completed all agreed work and deliverables for your review. Please inspect the invoice and submitted assets.');
   const [reference, setReference] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; size: string; url: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +48,7 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notes.trim() && !reference.trim() && attachedFiles.length === 0) {
-      alert('Add a file, a URL/reference link, or a written message to submit a delivery.');
+      alert('Add a file, a URL/reference link, or a written message to submit an invoice.');
       return;
     }
 
@@ -66,10 +66,10 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-slate-900 text-white rounded-xl">
-              <Send className="w-5 h-5 text-emerald-400" />
+              <Receipt className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-fiverr-dark">Final Invoice & Work Submission</h3>
+              <h3 className="text-base font-bold text-fiverr-dark">Invoice</h3>
               <p className="text-[11px] text-slate-400">Order #{order.id} · Escrow: ${order.amount.toLocaleString()}</p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block text-fiverr-dark font-bold uppercase tracking-wider text-[10px] mb-1.5">
-              Delivery Notes & Completion Presentation
+              Invoice Notes & Deliverable Details
             </label>
             <textarea
               rows={3}
@@ -156,7 +156,7 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
 
           <div className="p-3 bg-blue-50/70 text-[11px] text-blue-800 rounded-2xl border border-blue-200 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>Submitting your final invoice and deliverables initiates the buyer review period to approve and release the funded escrow (${order.amount.toLocaleString()}).</span>
+            <span>Submitting your invoice and deliverables initiates the buyer review period to approve and release the funded escrow (${order.amount.toLocaleString()}).</span>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">
@@ -171,7 +171,7 @@ export const WorkstreamDeliverModal: React.FC<WorkstreamDeliverModalProps> = ({
               type="submit"
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs shadow-xs transition cursor-pointer"
             >
-              Submit Final Invoice & Work
+              Submit Invoice
             </button>
           </div>
         </form>

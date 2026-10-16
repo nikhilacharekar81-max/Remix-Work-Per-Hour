@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ChevronLeft, ShieldCheck, Clock, CheckCircle2, AlertCircle, 
-  RotateCcw, Activity, FolderOpen, Send, Sparkles, MessageSquare, Video, Star 
+  RotateCcw, Activity, FolderOpen, Send, Sparkles, MessageSquare, Video, Star, Receipt
 } from 'lucide-react';
 import { WorkstreamItem, WorkstreamMessage, SharedFileItem, WorkstreamSubTab } from './types';
 import { UserAccount, Order } from '../../types';
@@ -310,8 +310,8 @@ export const WorkstreamWorkspace: React.FC<WorkstreamWorkspaceProps> = ({
                 onClick={() => setIsDeliverModalOpen(true)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Deliver Work</span>
+                <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Invoice</span>
               </button>
             )}
           </div>
