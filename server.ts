@@ -44,7 +44,7 @@ const isTestEnv = process.env.NODE_ENV === 'test';
 const IS_PROD = (isExplicitProd || isNpmStart || isCompiledProductionBundle) && !isTestEnv;
 
 if (IS_PROD) {
-  process.env.NODE_ENV = 'production';
+  (process.env as any).NODE_ENV = 'production';
 }
 
 // Internal secrets

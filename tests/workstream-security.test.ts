@@ -2,7 +2,7 @@
 // Boots the real server in test mode, drives the HTTP/WebSocket API with demo accounts and
 // asserts the access-control and escrow rules. Data files are snapshotted and restored.
 process.env.PORT = '3003';
-process.env.NODE_ENV = 'test';
+(process.env as any).NODE_ENV = 'test';
 
 import assert from 'node:assert';
 import fs from 'node:fs';

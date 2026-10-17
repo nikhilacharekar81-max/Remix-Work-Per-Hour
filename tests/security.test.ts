@@ -1,6 +1,6 @@
 // Automated Security Regression Tests for WorkPerHour Marketplace
 process.env.PORT = '3002';
-process.env.NODE_ENV = 'test';
+(process.env as any).NODE_ENV = 'test';
 
 import assert from 'node:assert';
 import { createHmac } from 'node:crypto';
@@ -285,7 +285,7 @@ async function run() {
     // F. Production configuration rejects simulated deposits
     const originalNodeEnv = process.env.NODE_ENV;
     try {
-      process.env.NODE_ENV = 'production';
+      (process.env as any).NODE_ENV = 'production';
 
       const prodDep1 = await api('/api/payments/deposit', {
         method: 'POST',
@@ -312,7 +312,7 @@ async function run() {
       assert.strictEqual(prodBypassAttempt.status, 501, 'Simulated deposits cannot activate in production even with ALLOW_SIMULATED_DEPOSITS=true');
       console.log('[PASS] Simulated deposits cannot accidentally activate in production with flags');
     } finally {
-      process.env.NODE_ENV = originalNodeEnv;
+      (process.env as any).NODE_ENV = originalNodeEnv;
       delete process.env.ALLOW_SIMULATED_DEPOSITS;
     }
 

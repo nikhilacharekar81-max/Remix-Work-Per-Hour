@@ -10,7 +10,7 @@
 // 8. Send two concurrent release requests -> only one release succeeds
 
 process.env.PORT = '3004';
-process.env.NODE_ENV = 'test';
+(process.env as any).NODE_ENV = 'test';
 
 import assert from 'node:assert';
 import fs from 'node:fs';
