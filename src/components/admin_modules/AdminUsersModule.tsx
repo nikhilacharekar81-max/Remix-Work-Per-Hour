@@ -37,7 +37,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const [editForm, setEditForm] = useState({ 
-    name: '', email: '', role: 'freelancer', title: '', walletBalance: 0, hourlyRate: 50, verified: false, status: 'active' as const
+    name: '', email: '', role: 'freelancer', title: '', walletBalance: 0, hourlyRate: 50, verified: false, status: 'active' as 'active' | 'suspended' | 'restricted'
   });
 
   const filteredUsers = useMemo(() => {
@@ -90,7 +90,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
       verified: editForm.verified,
       status: editForm.status
     };
-    setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+    setUsers((prev: UserAccount[]) => prev.map(u => u.id === updated.id ? updated : u));
     if (onUpdateUser) {
       onUpdateUser(updated);
     }
@@ -98,7 +98,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
   };
 
   const handleRestrictUser = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: u.status === 'restricted' ? 'active' : 'restricted' } : u));
+    setUsers((prev: UserAccount[]) => prev.map(u => u.id === userId ? { ...u, status: u.status === 'restricted' ? 'active' : 'restricted' } : u));
     if (onUpdateUser) {
       const u = users.find(x => x.id === userId);
       if (u) {
@@ -120,7 +120,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
       console.error("Error persisting deleted user ID to localStorage", e);
     }
 
-    setUsers(prev => prev.filter(u => String(u.id) !== idToDelete));
+    setUsers((prev: UserAccount[]) => prev.filter(u => String(u.id) !== idToDelete));
     if (onDeleteUser) {
       onDeleteUser(idToDelete);
     }
@@ -360,14 +360,14 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition text-slate-600"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition text-slate-600"
               >

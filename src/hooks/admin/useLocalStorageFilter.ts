@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 export function useLocalStorageFilter<T extends { id: string | number }>(
   sourceData: T[],
   storageKey: string
-): [T[], (items: T[]) => void] {
+): [T[], React.Dispatch<React.SetStateAction<T[]>>] {
   const [items, setItems] = useState<T[]>(() => {
     try {
       const deletedIds = JSON.parse(localStorage.getItem(storageKey) || '[]').map((d: any) => String(d));

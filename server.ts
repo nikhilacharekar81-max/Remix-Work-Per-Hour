@@ -48,7 +48,7 @@ if (IS_PROD) {
 }
 
 // Internal secrets
-const IS_PRODUCTION = process.env.NODE_ENV === 'production' || isCompiledProductionBundle;
+export const IS_PRODUCTION = process.env.NODE_ENV === 'production' || isCompiledProductionBundle;
 const JWT_SECRET: string = (() => {
   const fromEnv = process.env.JWT_SECRET;
   if (fromEnv && fromEnv.length >= 32) return fromEnv;
@@ -78,7 +78,7 @@ function areSimulatedDepositsAllowed(): boolean {
   return true;
 }
 
-function apiError(res: Response, message: string, status: number = 400) {
+export function apiError(res: Response, message: string, status: number = 400) {
   return res.status(status).json({ error: message });
 }
 
@@ -107,7 +107,7 @@ financeLedger.configure({
 // CRYPTOGRAPHIC AUTHENTICATION ADAPTER (JWT / Session)
 // ==========================================
 
-function signToken(payload: { id: string; role: string; email: string; sessionVersion?: number }, expiresInMs = 7 * 24 * 3600 * 1000): string {
+export function signToken(payload: { id: string; role: string; email: string; sessionVersion?: number }, expiresInMs = 7 * 24 * 3600 * 1000): string {
   const data = JSON.stringify({ ...payload, exp: Date.now() + expiresInMs });
   const base64Data = Buffer.from(data).toString('base64url');
   const signature = createHmac('sha256', JWT_SECRET).update(base64Data).digest('base64url');
@@ -202,12 +202,13 @@ interface VerificationRecord {
   attempts: number;
 }
 
-const emailVerificationCodes = new Map<string, VerificationRecord>();
-const smsVerificationCodes = new Map<string, VerificationRecord>();
+export const emailVerificationCodes = new Map<string, VerificationRecord>();
+export const smsVerificationCodes = new Map<string, VerificationRecord>();
+export const userEmails: UserEmail[] = [];
 const forgotPasswordCodes = new Map<string, VerificationRecord>();
 const withdrawalVerificationCodes = new Map<string, VerificationRecord>();
 
-function generate6DigitCode(): string {
+export function generate6DigitCode(): string {
   return randomInt(100000, 1000000).toString();
 }
 
@@ -215,7 +216,7 @@ function generate6DigitCode(): string {
 // In production a code must never leave the server in a response; otherwise device verification,
 // admin 2FA and password reset can all be bypassed by anyone.
 const EXPOSE_MOCK_CODES = !IS_PRODUCTION;
-function mockCode(key: string, code: string): Record<string, string> {
+export function mockCode(key: string, code: string): Record<string, string> {
   return EXPOSE_MOCK_CODES ? { [key]: code } : {};
 }
 
@@ -228,14 +229,14 @@ const USER_DEVICE_VERIFICATION = process.env.USER_DEVICE_VERIFICATION
 
 // No email provider is integrated yet. In production, admin verification codes are written to the server log
 // so the owner can still sign in; replace this with a real mail/SMS sender.
-function deliverAdminCode(email: string, code: string) {
+export function deliverAdminCode(email: string, code: string) {
   console.warn(`[AUTH ADMIN 2FA] Verification code for ${email}: ${code}`);
 }
 
-function isValidEmail(v: string): boolean {
+export function isValidEmail(v: string): boolean {
   return v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
-function isValidMobile(v: string): boolean {
+export function isValidMobile(v: string): boolean {
   return /^\+?[0-9][0-9\s\-()]{6,18}$/.test(v);
 }
 
@@ -882,7 +883,7 @@ app.post('/api/auth/withdrawal/verify-and-execute', requireAuth, (req, res) => {
   return handlePayoutRequest(req, res);
 });
 
-function safeUser(user: any) {
+export function safeUser(user: any) {
   const { password, knownDevices, sessionVersion, ...safe } = user;
   return safe;
 }
@@ -1064,7 +1065,7 @@ interface User {
   completedJobs: number;
   bio: string;
   skills: string[];
-  status: 'active' | 'suspended' | 'restricted' | 'deactivated';
+  status: 'active' | 'suspended' | 'restricted';
   verified: boolean;
   emailVerified?: boolean;
   mobileVerified?: boolean;
@@ -1320,7 +1321,6 @@ interface UserEmail {
   read: boolean;
 }
 
-let userEmails: UserEmail[] = [];
 
 function notifyUserOnAdminAction(user: User, action: 'suspended' | 'restricted' | 'deactivated' | 'impersonated', notes?: string) {
   const timestamp = new Date().toLocaleString();
