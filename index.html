@@ -3,16 +3,142 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Work Per Hour</title>
-    <meta name="description" content="A feature-rich PeoplePerHour clone with gig marketplace, custom project proposals, escrow payments, real-time messaging, and buyer/seller dashboards." />
-    <meta property="og:title" content="Work Per Hour" />
-    <meta property="og:description" content="A feature-rich PeoplePerHour clone with gig marketplace, custom project proposals, escrow payments, real-time messaging, and buyer/seller dashboards." />
+    <title>Remix Work Per Hour | Freelance Marketplace & Escrow Platform</title>
+    <meta
+      name="description"
+      content="A feature-rich PeoplePerHour clone with gig marketplace, custom project proposals, escrow payments, real-time messaging, and buyer/seller dashboards."
+    />
+    <meta name="keywords" content="freelance marketplace, escrow payments, hire freelancers, sell gigs, project proposals, remote work" />
+    <meta name="author" content="Work Per Hour Platform" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://workperhour.com/" />
+
+    <!-- OpenGraph Social Cards -->
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Work Per Hour" />
+    <meta property="og:url" content="https://workperhour.com/" />
+    <meta property="og:title" content="Remix Work Per Hour | Freelance Marketplace & Escrow Platform" />
+    <meta
+      property="og:description"
+      content="A feature-rich PeoplePerHour clone with gig marketplace, custom project proposals, escrow payments, real-time messaging, and buyer/seller dashboards."
+    />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&h=630&fit=crop" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter / X Cards -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@workperhour" />
+    <meta name="twitter:title" content="Remix Work Per Hour | Freelance Marketplace & Escrow Platform" />
+    <meta
+      name="twitter:description"
+      content="A feature-rich PeoplePerHour clone with gig marketplace, custom project proposals, escrow payments, real-time messaging, and buyer/seller dashboards."
+    />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&h=630&fit=crop" />
+
+    <!-- Schema.org JSON-LD Structured Data for Googlebot -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://workperhour.com/#organization",
+          "name": "Work Per Hour",
+          "url": "https://workperhour.com/",
+          "logo": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500&h=500&fit=crop",
+          "sameAs": [
+            "https://twitter.com/workperhour",
+            "https://linkedin.com/company/workperhour"
+          ]
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://workperhour.com/#webapp",
+          "name": "Work Per Hour Marketplace",
+          "url": "https://workperhour.com/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All",
+          "description": "A feature-rich PeoplePerHour clone with gig marketplace, custom project proposals, escrow payments, real-time messaging, and buyer/seller dashboards.",
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "USD",
+            "lowPrice": "5",
+            "highPrice": "10000"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Full Semantic HTML5 Pre-rendered content for Google Search Bots & Scrapers -->
+    <div id="root">
+      <header class="bg-white border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <a href="/" class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-lg">W</span>
+            <span class="font-extrabold text-xl text-slate-900 tracking-tight">WorkPerHour</span>
+          </a>
+          <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
+            <a href="/gigs">Browse Gigs</a>
+            <a href="/projects">Find Projects</a>
+            <a href="/freelancers">Top Freelancers</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <!-- Hero Section -->
+        <section class="bg-gradient-to-b from-indigo-900 via-indigo-950 to-slate-900 text-white py-20 px-4">
+          <div class="max-w-4xl mx-auto text-center space-y-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-indigo-200 text-xs font-bold">
+              100% Escrow-Protected Marketplace
+            </div>
+            <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              Hire Expert Freelancers for Any Job, Paid on Results.
+            </h1>
+            <p class="text-base md:text-lg text-indigo-200 max-w-2xl mx-auto">
+              From design systems to full-stack engineering. Your payments stay funded safely in escrow until you approve the final delivery.
+            </p>
+          </div>
+        </section>
+
+        <!-- Marketplace Services Catalog -->
+        <section class="max-w-7xl mx-auto px-4 py-16">
+          <h2 class="text-2xl font-bold text-slate-900 mb-6">Trending Freelance Services & Gigs</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <article class="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 class="text-base font-bold text-slate-900">Full-Stack SaaS & Web Architecture</h3>
+              <p class="text-xs text-slate-600 mt-1">Custom React, Node.js, and Escrow integrations with 100% milestone protection.</p>
+              <div class="mt-3 text-xs font-bold text-indigo-600">Starting at $650</div>
+            </article>
+            <article class="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 class="text-base font-bold text-slate-900">Principal UI/UX & Design Systems</h3>
+              <p class="text-xs text-slate-600 mt-1">Complete Figma component kits, brand guidelines, and responsive web design.</p>
+              <div class="mt-3 text-xs font-bold text-indigo-600">Starting at $500</div>
+            </article>
+            <article class="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 class="text-base font-bold text-slate-900">Technical Writing & API Documentation</h3>
+              <p class="text-xs text-slate-600 mt-1">High-converting developer documentation, copywriting, and technical blog posts.</p>
+              <div class="mt-3 text-xs font-bold text-indigo-600">Starting at $150</div>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="bg-slate-900 text-slate-400 py-12 px-4 text-xs">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-6">
+          <p>&copy; 2026 Work Per Hour Inc. All rights reserved. 100% Escrow Protection Guaranteed.</p>
+          <div class="flex gap-4">
+            <a href="/terms" class="hover:text-white">Terms of Service</a>
+            <a href="/privacy" class="hover:text-white">Privacy Policy</a>
+            <a href="/escrow" class="hover:text-white">Escrow Protection</a>
+          </div>
+        </div>
+      </footer>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
