@@ -12,6 +12,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { financeLedger, FinanceLedgerEngine } from './src/server/financeLedger.js';
 import { siteSettings, DEFAULT_SITE_SETTINGS } from './src/server/siteSettings.js';
 import { paymentGatewayManager } from './src/server/paymentGateways.js';
+import { requireAuth as requireAuthMiddleware, requireAdmin as requireAdminMiddleware } from './src/server/middleware/auth.js';
 export { siteSettings, DEFAULT_SITE_SETTINGS };
 import { OrderFeeBreakdown } from './src/shared/fees.js';
 import {
@@ -1430,6 +1431,9 @@ export let users: User[] = SEED_USERS.map(u => ({
   sessionVersion: u.sessionVersion || 1,
   knownDevices: u.knownDevices || ['dev_default_session']
 }));
+
+const requireAuthWrap = requireAuthMiddleware(users);
+const requireAdminWrap = requireAdminMiddleware(users);
 
 export let gigs: Gig[] = [...SEED_GIGS];
 export let orders: Order[] = [...SEED_ORDERS];
