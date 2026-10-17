@@ -17,4 +17,7 @@ export { AdminCmsModule } from './AdminCmsModule';
 export { AdminActivityModule } from './AdminActivityModule';
 export { AdminMembershipsQuotasModule } from './AdminMembershipsQuotasModule';
 export { AdminPaymentGatewaysModule } from './AdminPaymentGatewaysModule';
+export { AdminOrdersManager } from '../AdminOrdersManager';
+export { SiteFeeSettingsModule } from '../SiteFeeSettingsModule';
+export { UserWalletsLedgerModule } from '../UserWalletsLedgerModule';
 
