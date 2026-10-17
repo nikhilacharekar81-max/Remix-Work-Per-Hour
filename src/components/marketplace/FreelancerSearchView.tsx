@@ -205,17 +205,16 @@ export const FreelancerSearchView: React.FC<FreelancerSearchViewProps> = ({
 
       // Category filter
       if (selectedCategory !== 'All') {
-        if (u.category) {
-          if (!u.category.toLowerCase().includes(selectedCategory.toLowerCase()) && 
-              !selectedCategory.toLowerCase().includes(u.category.toLowerCase())) {
-            return false;
-          }
+        if (!u.category) return false;
+        if (!u.category.toLowerCase().includes(selectedCategory.toLowerCase()) && 
+            !selectedCategory.toLowerCase().includes(u.category.toLowerCase())) {
+          return false;
         }
       }
 
       // Subcategory filter
       if (selectedSubcategory !== 'All') {
-        if (u.subcategory && !u.subcategory.toLowerCase().includes(selectedSubcategory.toLowerCase())) {
+        if (!u.subcategory || !u.subcategory.toLowerCase().includes(selectedSubcategory.toLowerCase())) {
           return false;
         }
       }
@@ -223,9 +222,13 @@ export const FreelancerSearchView: React.FC<FreelancerSearchViewProps> = ({
       // Location filter
       if (selectedLocation !== 'All') {
         if (selectedLocation === 'Remote') {
-          // Keep all or remote
-        } else if (u.location && !u.location.toLowerCase().includes(selectedLocation.toLowerCase())) {
-          return false;
+          const loc = (u.location || '').toLowerCase();
+          const isRemoteUser = loc.includes('remote') || loc.includes('worldwide') || loc.includes('online') || Boolean((u as any).isRemote);
+          if (!isRemoteUser) return false;
+        } else {
+          if (!u.location || !u.location.toLowerCase().includes(selectedLocation.toLowerCase())) {
+            return false;
+          }
         }
       }
 

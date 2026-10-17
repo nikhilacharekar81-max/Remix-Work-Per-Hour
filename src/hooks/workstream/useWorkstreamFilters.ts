@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { WorkstreamItem, WorkstreamFilter } from '../../components/workstream/types';
+import { WorkstreamItem, WorkstreamFilter, WORKSTREAM_TAB_STATUSES } from '../../components/workstream/types';
 import { Project } from '../../types';
 
 export interface UseWorkstreamFiltersProps {
@@ -32,16 +32,13 @@ export function useWorkstreamFilters({
 
     return hydratedWorkstreamItems.filter(w => {
       // Tab filter
-      // 16: Discussion should be distinct from general inbox/in_progress. 
-      // Assuming 'discussion' means specifically active, in-progress work.
-      if (workstreamTab === 'inbox' && !['funded_in_escrow', 'in_progress', 'work_in_progress', 'draft_review', 'delivered', 'revision'].includes(w.status)) return false;
-      if (workstreamTab === 'in_progress' && !['in_progress', 'work_in_progress', 'funded_in_escrow', 'draft_review', 'revision'].includes(w.status)) return false;
-      if (workstreamTab === 'delivered' && w.status !== 'delivered') return false;
-      if (workstreamTab === 'completed' && w.status !== 'completed') return false;
+      if (workstreamTab === 'inbox' && !(WORKSTREAM_TAB_STATUSES.inbox as readonly string[]).includes(w.status)) return false;
+      if (workstreamTab === 'in_progress' && !(WORKSTREAM_TAB_STATUSES.in_progress as readonly string[]).includes(w.status)) return false;
+      if (workstreamTab === 'delivered' && !(WORKSTREAM_TAB_STATUSES.delivered as readonly string[]).includes(w.status)) return false;
+      if (workstreamTab === 'completed' && !(WORKSTREAM_TAB_STATUSES.completed as readonly string[]).includes(w.status)) return false;
       if (workstreamTab === 'starred' && !starredWorkstreams.includes(w.id)) return false;
       if (workstreamTab === 'escrow' && (w.amount <= 0 || w.status === 'cancelled' || w.status === 'completed')) return false;
-      // 17: Cancelled is one form of archive, but let's allow 'disputed' or other terminal/inactive states as well.
-      if (workstreamTab === 'archived' && !['cancelled', 'disputed'].includes(w.status)) return false;
+      if (workstreamTab === 'archived' && !(WORKSTREAM_TAB_STATUSES.archived as readonly string[]).includes(w.status)) return false;
 
       // Person filter
       if (selectedPersonFilter && w.sellerId !== selectedPersonFilter && w.buyerId !== selectedPersonFilter) return false;

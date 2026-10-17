@@ -82,3 +82,11 @@ export interface SharedFileItem {
   uploaderAvatar?: string;
   type?: string;
 }
+
+export const WORKSTREAM_TAB_STATUSES = {
+  inbox: ['funded_in_escrow', 'in_progress', 'work_in_progress', 'draft_review', 'delivered', 'revision'],
+  in_progress: ['in_progress', 'work_in_progress', 'funded_in_escrow', 'draft_review', 'revision'],
+  delivered: ['delivered'],
+  completed: ['completed'],
+  archived: ['cancelled', 'disputed']
+} as const;

@@ -1776,11 +1776,7 @@ function loadInitialOrdersAndMessages() {
 
   // Synchronize user review stats
   for (const u of users) {
-    const userReviews = reviews.filter(r => r.targetUserId === u.id);
-    if (userReviews.length > 0) {
-      u.reviewsCount = userReviews.length;
-      u.rating = Number((userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length).toFixed(1));
-    }
+    recalculateUserRating(u.id);
   }
 
   saveOrdersToDisk();
@@ -2283,8 +2279,40 @@ function splitOrderFunds(order: Order, refundAmount: number, actor: string, reas
   return result;
 }
 
+function sanitizePublicUser(user: any) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    avatar: user.avatar,
+    title: user.title,
+    bio: user.bio,
+    skills: user.skills || [],
+    category: user.category,
+    hourlyRate: user.hourlyRate,
+    rating: user.rating,
+    reviewsCount: user.reviewsCount,
+    completedJobs: user.completedJobs,
+    location: user.location,
+    joinedDate: user.joinedDate,
+    verified: user.verified,
+    isAvailableNow: user.isAvailableNow,
+    badges: user.badges || [],
+    languages: user.languages || []
+  };
+}
+
+function isUserPublic(u: any): boolean {
+  if (!u) return false;
+  if (u.status !== 'active') return false;
+  if (['admin', 'super_admin', 'support'].includes(u.role)) return false;
+  return true;
+}
+
 app.get('/api/users', (req, res) => {
-  res.json(users.map(safeUser));
+  const publicUsers = users.filter(isUserPublic).map(sanitizePublicUser);
+  res.json(publicUsers);
 });
 function sanitizePublicGig(g: Gig): Omit<Gig, 'moderationStatus' | 'moderationNotes'> {
   const { moderationStatus, moderationNotes, ...publicGig } = g;
@@ -4378,12 +4406,32 @@ app.delete('/api/admin/categories/:id/subcategories/:subId', (req, res) => {
 
   res.json(categories);
 });
+function isValidIntegerRating(val: unknown): boolean {
+  if (val === null || val === undefined) return false;
+  const num = Number(val);
+  return typeof num === 'number' && !isNaN(num) && Number.isInteger(num) && num >= 1 && num <= 5;
+}
+
 function isReviewPublic(r: Review): boolean {
+  if (!r) return false;
   // Reviews on cancelled orders are private dispute/cancellation records between participants and staff
   if (r.isCancelledOrder) return false;
-  // Non-approved or hidden moderation status
+  // Non-approved, hidden, or non-public moderation status
   if ((r as any).moderationStatus && (r as any).moderationStatus !== 'approved') return false;
+  if ((r as any).status && !['approved', 'published', 'active'].includes((r as any).status)) return false;
   return true;
+}
+
+function recalculateUserRating(userId: string) {
+  const targetUser = users.find(u => u.id === userId);
+  if (!targetUser) return;
+  const publicUserReviews = reviews.filter(r => r.targetUserId === userId && isReviewPublic(r));
+  targetUser.reviewsCount = publicUserReviews.length;
+  if (publicUserReviews.length > 0) {
+    targetUser.rating = Number((publicUserReviews.reduce((sum, r) => sum + r.rating, 0) / publicUserReviews.length).toFixed(1));
+  } else {
+    targetUser.rating = 5.0;
+  }
 }
 
 function sanitizePublicReview(r: Review): Review {
@@ -4440,10 +4488,10 @@ app.post('/api/reviews', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Order ID is required' });
   }
 
-  const numRating = Number(rating);
-  if (isNaN(numRating) || numRating < 1 || numRating > 5) {
-    return res.status(400).json({ error: 'Rating must be an integer between 1 and 5 stars' });
+  if (!isValidIntegerRating(rating)) {
+    return res.status(400).json({ error: 'Rating must be an integer between 1 and 5 stars.' });
   }
+  const numRating = Number(rating);
 
   if (!comment || typeof comment !== 'string' || !comment.trim()) {
     return res.status(400).json({ error: 'Review comment cannot be empty' });
@@ -4454,6 +4502,13 @@ app.post('/api/reviews', requireAuth, (req, res) => {
   if (!canAccessOrderWorkstream(caller, order)) {
     return res.status(403).json({ error: 'Forbidden: Only order participants can submit reviews.' });
   }
+
+  // Validate targetUserId against actual seller/buyer associated with order
+  const expectedTargetUserId = caller.id === order.buyerId ? order.sellerId : order.buyerId;
+  if (targetUserId && targetUserId !== expectedTargetUserId) {
+    return res.status(400).json({ error: 'Invalid targetUserId. Review must target the seller or buyer associated with this order.' });
+  }
+  const resolvedTargetUserId = expectedTargetUserId;
 
   // Completed and Cancelled order eligibility
   const allowedReviewStatuses = ['completed', 'cancelled'];
@@ -4466,8 +4521,6 @@ app.post('/api/reviews', requireAuth, (req, res) => {
   if (existingReview) {
     return res.status(409).json({ error: 'A review has already been submitted for this order. Use PUT /api/reviews/:id to edit your review.' });
   }
-
-  const resolvedTargetUserId = targetUserId || (caller.id === order.buyerId ? order.sellerId : order.buyerId);
 
   const newReview: Review = {
     id: 'rev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -4491,13 +4544,8 @@ app.post('/api/reviews', requireAuth, (req, res) => {
   order.review = newReview;
   saveOrdersToDisk();
 
-  // Dynamically update target user's rating and reviewsCount
-  const targetUser = users.find(u => u.id === resolvedTargetUserId);
-  if (targetUser) {
-    const userReviews = reviews.filter(r => r.targetUserId === resolvedTargetUserId);
-    targetUser.reviewsCount = userReviews.length;
-    targetUser.rating = Number((userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length).toFixed(1));
-  }
+  // Dynamically update target user's rating and reviewsCount using public reviews
+  recalculateUserRating(resolvedTargetUserId);
 
   // Broadcast system message to workstream
   const sysMsg: Message = {
@@ -4538,11 +4586,10 @@ app.put('/api/reviews/:id', requireAuth, (req, res) => {
 
   const { rating, comment } = req.body;
   if (rating !== undefined) {
-    const numRating = Number(rating);
-    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+    if (!isValidIntegerRating(rating)) {
       return res.status(400).json({ error: 'Rating must be an integer between 1 and 5 stars.' });
     }
-    review.rating = numRating;
+    review.rating = Number(rating);
   }
 
   if (comment && typeof comment === 'string' && comment.trim()) {
@@ -4553,11 +4600,7 @@ app.put('/api/reviews/:id', requireAuth, (req, res) => {
   saveReviewsToDisk();
 
   if (review.targetUserId) {
-    const userReviews = reviews.filter(r => r.targetUserId === review.targetUserId);
-    const targetUser = users.find(u => u.id === review.targetUserId);
-    if (targetUser && userReviews.length > 0) {
-      targetUser.rating = Number((userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length).toFixed(1));
-    }
+    recalculateUserRating(review.targetUserId);
   }
 
   if (review.orderId) {

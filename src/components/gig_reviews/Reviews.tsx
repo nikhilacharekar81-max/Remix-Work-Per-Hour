@@ -31,8 +31,15 @@ export const Reviews: React.FC<ReviewsProps> = ({
   
   const filteredReviews = dataset.filter(r => {
     if (currentGig) {
-      return r.targetUserId === currentGig.freelancerId || 
-             (r.orderTitle && currentGig.title && r.orderTitle.toLowerCase().includes(currentGig.title.toLowerCase().substring(0, 15)));
+      if (r.gigId) {
+        return r.gigId === currentGig.id;
+      }
+      if (r.orderTitle && currentGig.title) {
+        const rTitle = r.orderTitle.toLowerCase().trim();
+        const gTitle = currentGig.title.toLowerCase().trim();
+        return rTitle.includes(gTitle) || gTitle.includes(rTitle) || rTitle.substring(0, 20) === gTitle.substring(0, 20);
+      }
+      return false;
     } else if (targetUser) {
       return r.targetUserId === targetUser.id;
     }

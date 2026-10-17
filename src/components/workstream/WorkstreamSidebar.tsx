@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, FolderKanban, Users, Shield, Star, Inbox, MessageSquare, Clock, CheckCircle2, Archive, PackageCheck } from 'lucide-react';
 import { UserAccount, Project } from '../../types';
-import { WorkstreamFilter, WorkstreamItem } from './types';
+import { WorkstreamFilter, WorkstreamItem, WORKSTREAM_TAB_STATUSES } from './types';
 
 interface WorkstreamSidebarProps {
   currentTab: WorkstreamFilter;
@@ -36,13 +36,13 @@ export const WorkstreamSidebar: React.FC<WorkstreamSidebarProps> = ({
 }) => {
   const filterCounts = {
     all: orders.length,
-    inbox: orders.filter(o => ['funded_in_escrow', 'in_progress', 'work_in_progress', 'draft_review', 'delivered', 'revision'].includes(o.status)).length,
-    in_progress: orders.filter(o => ['in_progress', 'work_in_progress', 'funded_in_escrow', 'draft_review', 'revision'].includes(o.status)).length,
-    delivered: orders.filter(o => o.status === 'delivered').length,
-    completed: orders.filter(o => o.status === 'completed').length,
+    inbox: orders.filter(o => (WORKSTREAM_TAB_STATUSES.inbox as readonly string[]).includes(o.status)).length,
+    in_progress: orders.filter(o => (WORKSTREAM_TAB_STATUSES.in_progress as readonly string[]).includes(o.status)).length,
+    delivered: orders.filter(o => (WORKSTREAM_TAB_STATUSES.delivered as readonly string[]).includes(o.status)).length,
+    completed: orders.filter(o => (WORKSTREAM_TAB_STATUSES.completed as readonly string[]).includes(o.status)).length,
     starred: starredCount,
     escrow: orders.filter(o => o.amount > 0 && !['cancelled', 'completed'].includes(o.status)).length,
-    archived: orders.filter(o => ['cancelled', 'disputed'].includes(o.status)).length
+    archived: orders.filter(o => (WORKSTREAM_TAB_STATUSES.archived as readonly string[]).includes(o.status)).length
   };
 
   const filterTabs: Array<{ id: WorkstreamFilter; label: string; icon: React.ReactNode; count: number }> = [

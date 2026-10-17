@@ -236,7 +236,7 @@ export const ProjectSearchView: React.FC<ProjectSearchViewProps> = ({
 
       // Category
       if (selectedCategory !== 'All Categories') {
-        if (proj.category.toLowerCase() !== selectedCategory.toLowerCase()) {
+        if (!proj.category || proj.category.toLowerCase() !== selectedCategory.toLowerCase()) {
           return false;
         }
       }
@@ -253,17 +253,16 @@ export const ProjectSearchView: React.FC<ProjectSearchViewProps> = ({
 
       // Experience Level
       if (experienceLevel !== 'all') {
-        if (proj.experienceLevel && proj.experienceLevel !== experienceLevel) return false;
+        if (!proj.experienceLevel || proj.experienceLevel !== experienceLevel) return false;
       }
 
       // Location
       if (selectedLocation !== 'All Locations') {
-        if (proj.location) {
-          const locQuery = selectedLocation.toLowerCase();
-          const matchesLoc = proj.location.toLowerCase().includes(locQuery) ||
-                             (selectedLocation === 'Worldwide' && proj.location.toLowerCase().includes('remote'));
-          if (!matchesLoc) return false;
-        }
+        if (!proj.location) return false;
+        const locQuery = selectedLocation.toLowerCase();
+        const matchesLoc = proj.location.toLowerCase().includes(locQuery) ||
+                           (selectedLocation === 'Worldwide' && (proj.location.toLowerCase().includes('remote') || proj.location.toLowerCase().includes('worldwide')));
+        if (!matchesLoc) return false;
       }
 
       // Flags
