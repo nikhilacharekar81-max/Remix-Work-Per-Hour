@@ -256,6 +256,7 @@ export class SiteSettingsService {
     } catch (e) {
       console.error('[SiteSettingsService] Failed to load site_settings.json from disk:', e);
     }
+    this.syncFeesToLedger();
   }
 
   public saveToDisk() {

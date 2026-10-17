@@ -32,7 +32,7 @@ export const SiteFeeSettingsModule: React.FC<SiteFeeSettingsModuleProps> = ({
   const [clientServiceFee, setClientServiceFee] = useState<number>(initialClientServiceFee);
   const [smallOrderFeeAmount, setSmallOrderFeeAmount] = useState<number>(initialSmallOrderFeeAmount);
   const [smallOrderFeeThreshold, setSmallOrderFeeThreshold] = useState<number>(initialSmallOrderFeeThreshold);
-  const [minOrder, setMinOrder] = useState<number>(10);
+  const [minOrder, setMinOrder] = useState<number>(0);
   const [minPayout, setMinPayout] = useState<number>(50);
 
   // Gigs Marketplace Specific Settings

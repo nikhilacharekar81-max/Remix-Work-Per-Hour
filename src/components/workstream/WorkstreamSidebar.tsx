@@ -36,8 +36,8 @@ export const WorkstreamSidebar: React.FC<WorkstreamSidebarProps> = ({
 }) => {
   const filterCounts = {
     all: orders.length,
-    inbox: orders.filter(o => ['funded_in_escrow', 'in_progress', 'delivered', 'revision'].includes(o.status)).length,
-    in_progress: orders.filter(o => ['in_progress', 'funded_in_escrow', 'revision'].includes(o.status)).length,
+    inbox: orders.filter(o => ['funded_in_escrow', 'in_progress', 'work_in_progress', 'draft_review', 'delivered', 'revision'].includes(o.status)).length,
+    in_progress: orders.filter(o => ['in_progress', 'work_in_progress', 'funded_in_escrow', 'draft_review', 'revision'].includes(o.status)).length,
     delivered: orders.filter(o => o.status === 'delivered').length,
     completed: orders.filter(o => o.status === 'completed').length,
     starred: starredCount,

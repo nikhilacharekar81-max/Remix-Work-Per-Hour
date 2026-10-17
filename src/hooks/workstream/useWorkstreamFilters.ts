@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { WorkstreamItem, WorkstreamFilter } from '../../components/workstream/types';
+import { Project } from '../../types';
 
 export interface UseWorkstreamFiltersProps {
   hydratedWorkstreamItems?: WorkstreamItem[];
@@ -8,6 +9,7 @@ export interface UseWorkstreamFiltersProps {
   selectedPersonFilter?: string | null;
   projectFilterSearch?: string;
   workstreamSearch?: string;
+  projects?: Project[];
 }
 
 /**
@@ -20,15 +22,20 @@ export function useWorkstreamFilters({
   starredWorkstreams = [],
   selectedPersonFilter = null,
   projectFilterSearch = '',
-  workstreamSearch = ''
+  workstreamSearch = '',
+  projects = []
 }: UseWorkstreamFiltersProps = {}) {
   const filteredWorkstreamItems: WorkstreamItem[] = useMemo(() => {
+    // If projectFilterSearch is a project ID, find the corresponding project title
+    const selectedProject = projects.find(p => p.id === projectFilterSearch || p.id.toLowerCase() === projectFilterSearch.toLowerCase());
+    const targetProjectTitle = selectedProject?.title.toLowerCase();
+
     return hydratedWorkstreamItems.filter(w => {
       // Tab filter
       // 16: Discussion should be distinct from general inbox/in_progress. 
       // Assuming 'discussion' means specifically active, in-progress work.
-      if (workstreamTab === 'inbox' && !['funded_in_escrow', 'in_progress', 'delivered', 'revision'].includes(w.status)) return false;
-      if (workstreamTab === 'in_progress' && !['in_progress', 'funded_in_escrow', 'revision'].includes(w.status)) return false;
+      if (workstreamTab === 'inbox' && !['funded_in_escrow', 'in_progress', 'work_in_progress', 'draft_review', 'delivered', 'revision'].includes(w.status)) return false;
+      if (workstreamTab === 'in_progress' && !['in_progress', 'work_in_progress', 'funded_in_escrow', 'draft_review', 'revision'].includes(w.status)) return false;
       if (workstreamTab === 'delivered' && w.status !== 'delivered') return false;
       if (workstreamTab === 'completed' && w.status !== 'completed') return false;
       if (workstreamTab === 'starred' && !starredWorkstreams.includes(w.id)) return false;
@@ -39,8 +46,16 @@ export function useWorkstreamFilters({
       // Person filter
       if (selectedPersonFilter && w.sellerId !== selectedPersonFilter && w.buyerId !== selectedPersonFilter) return false;
 
-      // Project filter
-      if (projectFilterSearch && !w.title.toLowerCase().includes(projectFilterSearch.toLowerCase())) return false;
+      // Project filter: match against w.projectId, w.title, w.serviceTitle, or the selected project's title
+      if (projectFilterSearch) {
+        const pf = projectFilterSearch.toLowerCase();
+        const matchesProjectId = Boolean(w.projectId && (w.projectId === projectFilterSearch || w.projectId.toLowerCase() === pf));
+        const matchesTitle = w.title.toLowerCase().includes(pf);
+        const matchesServiceTitle = Boolean((w as any).serviceTitle && (w as any).serviceTitle.toLowerCase().includes(pf));
+        const matchesProjectTitle = Boolean(targetProjectTitle && (w.title.toLowerCase().includes(targetProjectTitle) || (w as any).serviceTitle?.toLowerCase().includes(targetProjectTitle)));
+
+        if (!matchesProjectId && !matchesTitle && !matchesServiceTitle && !matchesProjectTitle) return false;
+      }
 
       // 18: Search query - Expand search to include metadata, buyer/seller name, and potential message preview content
       if (workstreamSearch) {
@@ -50,15 +65,12 @@ export function useWorkstreamFilters({
         const matchesSeller = w.seller?.name.toLowerCase().includes(q);
         const matchesBuyer = w.buyer?.name.toLowerCase().includes(q);
         const matchesMetadata = (w.requirements || '').toLowerCase().includes(q);
-        // Assuming messages/attachments aren't directly in WorkstreamItem, 
-        // we'd need to extend WorkstreamItem or pass extra data. 
-        // For now, expand to fields present in the object.
         if (!matchesTitle && !matchesId && !matchesSeller && !matchesBuyer && !matchesMetadata) return false;
       }
 
       return true;
     });
-  }, [hydratedWorkstreamItems, workstreamTab, starredWorkstreams, selectedPersonFilter, projectFilterSearch, workstreamSearch]);
+  }, [hydratedWorkstreamItems, workstreamTab, starredWorkstreams, selectedPersonFilter, projectFilterSearch, workstreamSearch, projects]);
 
   return {
     filteredWorkstreamItems

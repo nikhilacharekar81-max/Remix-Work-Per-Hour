@@ -11,6 +11,7 @@ import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
 import { financeLedger, FinanceLedgerEngine } from './src/server/financeLedger.js';
 import { siteSettings, DEFAULT_SITE_SETTINGS } from './src/server/siteSettings.js';
+import { paymentGatewayManager } from './src/server/paymentGateways.js';
 export { siteSettings, DEFAULT_SITE_SETTINGS };
 import { OrderFeeBreakdown } from './src/shared/fees.js';
 import {
@@ -1907,6 +1908,74 @@ app.patch('/api/admin/settings', requireAdmin, handlePostSiteSettings);
 app.post('/api/admin/site-settings', requireAdmin, handlePostSiteSettings);
 app.patch('/api/admin/site-settings', requireAdmin, handlePostSiteSettings);
 
+// Payment Gateways Admin Endpoints
+app.get('/api/admin/payment-gateways', requireAdmin, (req, res) => {
+  try {
+    res.json({ success: true, gateways: paymentGatewayManager.getMaskedState() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/payment-gateways/:environment/:gateway', requireAdmin, (req, res) => {
+  try {
+    const env = req.params.environment as 'production' | 'sandbox';
+    const gw = req.params.gateway as 'paypal' | 'stripe' | 'razorpay';
+    const actor = (req as any).authenticatedUser?.name || 'Super Admin';
+
+    if (!['production', 'sandbox'].includes(env)) {
+      return res.status(400).json({ error: 'Invalid environment. Must be production or sandbox.' });
+    }
+    if (!['paypal', 'stripe', 'razorpay'].includes(gw)) {
+      return res.status(400).json({ error: 'Invalid gateway. Must be paypal, stripe, or razorpay.' });
+    }
+
+    const updated = paymentGatewayManager.updateGateway(env, gw, req.body || {});
+
+    registerAuditLog({
+      id: 'log_' + Date.now(),
+      actor,
+      role: 'super_admin',
+      action: 'PAYMENT_GATEWAY_UPDATED',
+      target: `${gw.toUpperCase()} (${env.toUpperCase()})`,
+      details: `Updated ${gw} configuration for ${env} environment (Enabled: ${updated[gw].enabled}, Primary: ${updated[gw].primary})`,
+      timestamp: new Date().toLocaleString()
+    });
+
+    res.json({ success: true, environmentGateways: paymentGatewayManager.getMaskedState()[env] });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/payment-gateways/:environment/:gateway/test', requireAdmin, (req, res) => {
+  try {
+    const env = req.params.environment as 'production' | 'sandbox';
+    const gw = req.params.gateway as 'paypal' | 'stripe' | 'razorpay';
+    const actor = (req as any).authenticatedUser?.name || 'Super Admin';
+
+    if (!['production', 'sandbox'].includes(env) || !['paypal', 'stripe', 'razorpay'].includes(gw)) {
+      return res.status(400).json({ error: 'Invalid environment or gateway.' });
+    }
+
+    const result = paymentGatewayManager.testConnection(env, gw);
+
+    registerAuditLog({
+      id: 'log_' + Date.now(),
+      actor,
+      role: 'super_admin',
+      action: 'PAYMENT_GATEWAY_CONNECTION_TESTED',
+      target: `${gw.toUpperCase()} (${env.toUpperCase()})`,
+      details: `Tested connection for ${gw} (${env}): ${result.message}`,
+      timestamp: new Date().toLocaleString()
+    });
+
+    res.json({ success: result.success, message: result.message });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Memberships & Quotas Admin Endpoints
 app.get('/api/admin/memberships', requireAdmin, (req, res) => {
   try {
@@ -1926,24 +1995,10 @@ app.post('/api/admin/memberships', requireAdmin, (req, res) => {
     const { memberships, marketplace } = req.body || {};
     const actor = (req as any).authenticatedUser?.name || 'Super Admin';
     if (memberships) {
-      if (typeof memberships.membershipsEnabled === 'boolean') {
-        DEFAULT_SITE_SETTINGS.memberships.membershipsEnabled = memberships.membershipsEnabled;
-      }
-      if (Array.isArray(memberships.freelancerPlans)) {
-        DEFAULT_SITE_SETTINGS.memberships.freelancerPlans = memberships.freelancerPlans;
-      }
-      if (Array.isArray(memberships.buyerPlans)) {
-        DEFAULT_SITE_SETTINGS.memberships.buyerPlans = memberships.buyerPlans;
-      }
-      siteSettings.updateSection('memberships', DEFAULT_SITE_SETTINGS.memberships, actor);
+      siteSettings.updateSection('memberships', memberships, actor);
     }
     if (marketplace) {
-      if (marketplace.minimumGigPrice !== undefined) DEFAULT_SITE_SETTINGS.marketplace.minimumGigPrice = Number(marketplace.minimumGigPrice);
-      if (marketplace.maximumGigPrice !== undefined) DEFAULT_SITE_SETTINGS.marketplace.maximumGigPrice = Number(marketplace.maximumGigPrice);
-      if (marketplace.minimumProjectBudget !== undefined) DEFAULT_SITE_SETTINGS.marketplace.minimumProjectBudget = Number(marketplace.minimumProjectBudget);
-      if (marketplace.maxActiveOrdersPerFreelancer !== undefined) DEFAULT_SITE_SETTINGS.marketplace.maxActiveOrdersPerFreelancer = Number(marketplace.maxActiveOrdersPerFreelancer);
-      if (marketplace.gigModerationRequired !== undefined) DEFAULT_SITE_SETTINGS.marketplace.gigModerationRequired = Boolean(marketplace.gigModerationRequired);
-      siteSettings.updateSection('marketplace', DEFAULT_SITE_SETTINGS.marketplace, actor);
+      siteSettings.updateSection('marketplace', marketplace, actor);
     }
 
     registerAuditLog({
@@ -3173,7 +3228,7 @@ app.post('/api/payments/deposit', requireAuth, rateLimit(10, 60_000), (req, res)
 // Withdraw Funds from User Account
 app.post('/api/payments/withdraw', requireAuth, rateLimit(10, 60_000), handlePayoutRequest);
 
-function validateOrderReleasePreconditions(order: Order, isAdmin = false): { status: number; error: string } | null {
+function validateOrderReleasePreconditions(order: Order, isAdmin = false, isInvoiceApproval = false): { status: number; error: string } | null {
   if (order.status === 'completed') {
     return { status: 400, error: 'Order escrow has already been released and completed.' };
   }
@@ -3185,21 +3240,21 @@ function validateOrderReleasePreconditions(order: Order, isAdmin = false): { sta
     return { status: 400, error: 'Cannot release escrow: Order is under active dispute. Resolve the dispute first.' };
   }
   if (!isAdmin) {
-    if (order.status !== 'delivered') {
-      return {
-        status: 400,
-        error: `Cannot release escrow: Order is currently in "${order.status}" status. Buyer release becomes available only after the seller submits the invoice.`
-      };
-    }
     const hasDelivery = (Array.isArray(order.deliveryHistory) && order.deliveryHistory.length > 0) ||
                         (Array.isArray(order.deliverableFiles) && order.deliverableFiles.length > 0);
     if (!hasDelivery) {
       return {
         status: 400,
-        error: 'Cannot release escrow: No formal invoice exists for this order.'
+        error: 'Cannot release escrow: No formal invoice or delivery exists for this order.'
       };
     }
-    if (Array.isArray(order.revisions) && order.revisions.some(r => r.status === 'requested')) {
+    if (!isInvoiceApproval && order.status !== 'delivered') {
+      return {
+        status: 400,
+        error: `Cannot release escrow: Order is currently in "${order.status}" status. Buyer release becomes available only after the seller submits the invoice.`
+      };
+    }
+    if (!isInvoiceApproval && Array.isArray(order.revisions) && order.revisions.some(r => r.status === 'requested')) {
       return {
         status: 400,
         error: 'Cannot release escrow: A revision request is currently pending resolution by the seller.'
@@ -3556,33 +3611,6 @@ app.post('/api/payments/invoices', requireAuth, (req, res) => {
   }
 });
 
-// Pay Custom Invoice
-app.post('/api/payments/invoices/:id/pay', requireAuth, (req, res) => {
-  try {
-    const authUserId = (req as any).authenticatedUserId;
-    const invoice = customInvoices.find(i => i.id === req.params.id);
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
-    if (invoice.status === 'paid') return res.status(400).json({ error: 'Invoice is already paid.' });
-    if (invoice.userId === authUserId) return res.status(400).json({ error: 'You cannot pay your own invoice.' });
-
-    financeLedger.payCustomInvoice({
-      invoiceId: invoice.id,
-      buyerId: authUserId,
-      sellerId: invoice.userId,
-      amount: invoice.total,
-      title: invoice.title,
-      actor: `user:${authUserId}`
-    });
-
-    invoice.status = 'paid';
-    saveCustomInvoicesToDisk();
-    syncUserBalances();
-    res.json({ success: true, invoice });
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
 // Saved Payment Methods CRUD
 app.get('/api/payments/methods/:userId', requireAuth, (req, res) => {
   const authUserId = (req as any).authenticatedUserId;
@@ -3637,15 +3665,33 @@ app.post('/api/payments/methods', requireAuth, (req, res) => {
 
 app.delete('/api/payments/methods/:id', requireAuth, (req, res) => {
   const authUserId = (req as any).authenticatedUserId;
+  const caller = users.find(u => u.id === authUserId);
+  const isAdmin = caller?.role === 'admin' || caller?.role === 'super_admin' || caller?.role === 'support';
+
   const method = savedPaymentMethods.find(m => m.id === req.params.id);
+  if (!method) return res.status(404).json({ error: 'Payment method not found' });
+  if (!isAdmin && method.userId !== authUserId) {
+    return res.status(403).json({ error: 'Forbidden: Cannot delete another user payment method.' });
+  }
+
   const index = savedPaymentMethods.findIndex(m => m.id === req.params.id);
-  savedPaymentMethods.splice(index, 1);
+  if (index !== -1) {
+    savedPaymentMethods.splice(index, 1);
+  }
   res.json({ success: true, id: req.params.id });
 });
 
 app.patch('/api/payments/methods/:id/default', requireAuth, (req, res) => {
+  const authUserId = (req as any).authenticatedUserId;
+  const caller = users.find(u => u.id === authUserId);
+  const isAdmin = caller?.role === 'admin' || caller?.role === 'super_admin' || caller?.role === 'support';
+
   const method = savedPaymentMethods.find(m => m.id === req.params.id);
   if (!method) return res.status(404).json({ error: 'Payment method not found' });
+  if (!isAdmin && method.userId !== authUserId) {
+    return res.status(403).json({ error: 'Forbidden: Cannot modify another user payment method.' });
+  }
+
   savedPaymentMethods.forEach(m => {
     if (m.userId === method.userId) m.isDefault = false;
   });
@@ -3656,6 +3702,27 @@ app.patch('/api/payments/methods/:id/default', requireAuth, (req, res) => {
 // ==========================================
 // DOUBLE-ENTRY LEDGER & FINANCIAL REST APIS
 // ==========================================
+
+// Reset Financial Ledger and Workstream Data to Pristine Clean State
+app.post('/api/admin/finance/reset-clean', requireRole(['admin', 'super_admin']), (req, res) => {
+  try {
+    financeLedger.resetToCleanState();
+    orders = [];
+    orderIndex.clear();
+    messages = [];
+    messageIndex.clear();
+    workstreamOffers = [];
+    customInvoices = [];
+    disputes = [];
+    saveOrdersToDisk();
+    saveMessagesToDisk();
+    saveOffersToDisk();
+    saveCustomInvoicesToDisk();
+    res.json({ success: true, message: 'Financial ledger and workstream data reset to pristine clean state.' });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // 1. Overview Financial Metrics Dashboard
 app.get('/api/admin/finance/overview', requireRole(['admin', 'super_admin']), (req, res) => {
@@ -5815,9 +5882,16 @@ app.post('/api/offers/:id/:action(accept|decline|cancel)', requireAuth, rateLimi
     if (action === 'cancel') {
       if (caller.id !== order.sellerId) return res.status(403).json({ error: 'Only the seller can cancel this.' });
       offer.status = 'cancelled'; offer.resolvedAt = now; offer.resolvedBy = caller.id;
+      if (offer.kind === 'invoice' && (order.status === 'delivered' || order.status === 'draft_review')) {
+        const otherPendingInvoice = workstreamOffers.some(o => o.orderId === order.id && o.id !== offer.id && o.kind === 'invoice' && o.status === 'pending');
+        if (!otherPendingInvoice && orderHasEscrow(order.id)) {
+          order.status = 'in_progress';
+          saveOrdersToDisk();
+        }
+      }
       saveOffersToDisk();
       postOfferMessage(order, offer, null, `${offer.number} was cancelled by the seller.`, 'offer_cancelled');
-      return res.json({ offer: viewOffer(offer) });
+      return res.json({ offer: viewOffer(offer), order: enrichOrderWithServiceInfo(order) });
     }
 
     // Accepting / declining belongs to the buyer only (not staff, not the seller).
@@ -5837,17 +5911,29 @@ app.post('/api/offers/:id/:action(accept|decline|cancel)', requireAuth, rateLimi
     const isInitialFunding = !orderHasEscrow(order.id);
 
     if (offer.kind === 'invoice') {
-      const validationError = validateOrderReleasePreconditions(order, false);
+      const validationError = validateOrderReleasePreconditions(order, false, true);
       if (validationError) {
         return res.status(validationError.status).json({ error: validationError.error });
+      }
+      // Resolve any outstanding revision requests upon accepting the new Invoice
+      if (Array.isArray(order.revisions)) {
+        for (const rev of order.revisions) {
+          if (rev.status === 'requested') {
+            rev.status = 'resolved';
+          }
+        }
       }
       offer.status = 'paid';
       offer.resolvedAt = now;
       offer.resolvedBy = caller.id;
+
+      // Immediately release escrow funds to the seller upon buyer accepting the final invoice
+      releaseOrderFunds(order, caller.name, `Final invoice ${offer.number} accepted by buyer and escrow released`);
+
       saveOffersToDisk();
       saveOrdersToDisk();
       saveMessagesToDisk();
-      postOfferMessage(order, offer, null, `${offer.number} was accepted. Awaiting buyer escrow release.`, 'offer_accepted');
+      postOfferMessage(order, offer, null, `${offer.number} was accepted and escrow funds ($${order.amount.toLocaleString()}) were released to the seller. Order completed!`, 'offer_accepted');
       return res.json({ offer: viewOffer(offer), order: enrichOrderWithServiceInfo(order) });
 
     } else if (isInitialFunding) {

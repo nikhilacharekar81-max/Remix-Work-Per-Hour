@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Briefcase, Layers, Shield, Sliders,
   FileText, CheckCircle2, DollarSign, Wallet, ShieldCheck, Scale,
   CornerDownLeft, TrendingUp, Star, MessageCircle, Flag, HelpCircle,
-  FileCode, Settings, Activity, ShieldAlert, LogOut, Award
+  FileCode, Settings, Activity, ShieldAlert, LogOut, Award, CreditCard
 } from 'lucide-react';
 import { UserAccount, Gig, Project, Proposal, Order } from '../types';
 import { getDeviceId as defaultGetDeviceId } from '../utils/deviceId';
@@ -29,7 +29,8 @@ import {
   AdminSupportModule,
   AdminCmsModule,
   AdminActivityModule,
-  AdminMembershipsQuotasModule
+  AdminMembershipsQuotasModule,
+  AdminPaymentGatewaysModule
 } from '../components/admin_modules';
 import { setAuthToken } from '../utils/authToken';
 
@@ -79,7 +80,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     'overview' | 'users' | 'projects' | 'gigs' | 'categories' | 
     'proposals' | 'contracts' | 'payments' | 'wallet' | 'escrow' | 
     'disputes' | 'refunds' | 'payouts' | 'reviews' | 'messages' | 
-    'reports' | 'support' | 'cms' | 'settings' | 'security' | 'activity' | 'orders' | 'memberships'
+    'reports' | 'support' | 'cms' | 'settings' | 'security' | 'activity' | 'orders' | 'memberships' | 'paymentGateways'
   >('overview');
 
   // Admin Auth & 2FA State
@@ -316,6 +317,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               { id: 'cms', label: '19. CMS & Legal Policies', icon: FileCode },
               { id: 'settings', label: '20. Site & Fee Settings', icon: Settings },
               { id: 'memberships', label: '21. Memberships & Quotas', icon: Award },
+              { id: 'paymentGateways', label: 'Payment Gateways', icon: CreditCard },
               { id: 'activity', label: '22. Activity & Audit Trail', icon: Activity }
             ].map(item => {
               const IconComp = item.icon;
@@ -540,13 +542,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           <AdminMembershipsQuotasModule />
         )}
 
-        {/* MODULE 22: ACTIVITY & AUDIT */}
+        {/* MODULE 22: PAYMENT GATEWAYS */}
+        {adminTab === 'paymentGateways' && (
+          <AdminPaymentGatewaysModule />
+        )}
+
+        {/* MODULE 23: ACTIVITY & AUDIT */}
         {(adminTab === 'security' || adminTab === 'activity') && (
           <AdminActivityModule />
         )}
 
         {/* FALLBACK FOR OTHER MODULES */}
-        {!['overview', 'users', 'projects', 'gigs', 'categories', 'orders', 'proposals', 'contracts', 'payments', 'wallet', 'escrow', 'payouts', 'disputes', 'refunds', 'reviews', 'messages', 'reports', 'support', 'cms', 'settings', 'memberships', 'security', 'activity'].includes(adminTab) && (
+        {!['overview', 'users', 'projects', 'gigs', 'categories', 'orders', 'proposals', 'contracts', 'payments', 'wallet', 'escrow', 'payouts', 'disputes', 'refunds', 'reviews', 'messages', 'reports', 'support', 'cms', 'settings', 'memberships', 'paymentGateways', 'security', 'activity'].includes(adminTab) && (
           <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-3 shadow-xs">
             <ShieldCheck className="w-8 h-8 text-emerald-600 mx-auto" />
             <h3 className="text-base font-bold text-fiverr-dark uppercase">{adminTab} Module Active</h3>
