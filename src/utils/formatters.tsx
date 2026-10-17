@@ -9,15 +9,6 @@ export function formatCurrency(amount: number | undefined | null, decimals: numb
   return `$${validAmount.toFixed(decimals)}`;
 }
 
-/**
- * Shared File Size Formatting Utility
- */
-export function formatFileSize(bytes: number | undefined | null): string {
-  const validBytes = Number.isFinite(bytes as number) ? (bytes as number) : 0;
-  if (validBytes === 0) return '0 MB';
-  const mb = validBytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(validBytes / 1024).toFixed(1)} KB`;
-}
 
 /**
  * Shared Status Badge Presentation Utility

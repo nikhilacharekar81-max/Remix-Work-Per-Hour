@@ -77,6 +77,19 @@ function areSimulatedDepositsAllowed(): boolean {
   return true;
 }
 
+function apiError(res: Response, message: string, status: number = 400) {
+  return res.status(status).json({ error: message });
+}
+
+function saveEntityToDisk(type: 'orders' | 'reviews' | 'messages', data: any) {
+  const fileMap = {
+    orders: path.join(DATA_DIR, 'workstream_orders.json'),
+    reviews: path.join(DATA_DIR, 'workstream_reviews.json'),
+    messages: path.join(DATA_DIR, 'workstream_messages.json')
+  };
+  fs.writeFileSync(fileMap[type], JSON.stringify(data, null, 2));
+}
+
 // Feed business rules from the site settings into the ledger engine
 financeLedger.configure({
   commissionPercent: DEFAULT_SITE_SETTINGS.commission.commissionPercent,
@@ -230,7 +243,7 @@ app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, confirmPassword, mobile, name } = req.body || {};
     if (typeof email !== 'string' || typeof password !== 'string' || typeof mobile !== 'string' || !email.trim() || !password || !mobile.trim()) {
-      return res.status(400).json({ error: 'Email, password, and mobile number are required.' });
+      return apiError(res, 'Email, password, and mobile number are required.');
     }
     if (password !== confirmPassword) {
       return res.status(400).json({ error: 'Passwords do not match.' });
@@ -306,8 +319,6 @@ app.post('/api/auth/signup', async (req, res) => {
     });
 
     if (!IS_PRODUCTION) {
-      console.log(`[AUTH SIGNUP] Email verification code for ${normalizedEmail}: ${emailCode}`);
-      console.log(`[AUTH SIGNUP] SMS verification code for ${mobile.trim()}: ${smsCode}`);
     }
 
     userEmails.unshift({
@@ -396,7 +407,6 @@ app.post('/api/auth/resend-email-code', (req, res) => {
   });
 
   if (!IS_PRODUCTION) {
-    console.log(`[AUTH RESEND] Email verification code for ${normalizedEmail}: ${newCode}`);
   } else if (user && (user.role === 'admin' || user.role === 'super_admin')) {
     deliverAdminCode(normalizedEmail, newCode);
   }
@@ -451,7 +461,7 @@ app.post('/api/auth/resend-sms-code', (req, res) => {
     attempts: 0
   });
 
-  if (!IS_PRODUCTION) console.log(`[AUTH RESEND] SMS verification code for ${cleanMobile}: ${newCode}`);
+  if (!IS_PRODUCTION) {}
   res.json({ success: true, message: 'New SMS OTP dispatched.', ...mockCode('mockSmsCode', newCode) });
 });
 
@@ -764,7 +774,6 @@ app.post('/api/auth/forgot-password/request', (req, res) => {
   });
 
   if (!IS_PRODUCTION) {
-    console.log(`[AUTH FORGOT] Recovery code for ${query}: ${code}`);
   } else if (user.role === 'admin' || user.role === 'super_admin') {
     deliverAdminCode(user.email, code);
   }
