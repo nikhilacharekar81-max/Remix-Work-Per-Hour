@@ -65,7 +65,6 @@ import {
   Message, 
   UserEmail 
 } from './types';
-import { useEscrowReviews } from './useEscrowReviews';
 import { getAuthToken, setAuthToken, clearAuthToken, requestDemoSession } from './utils/authToken';
 
 const CATEGORY_SLUGS: Record<string, string> = {
