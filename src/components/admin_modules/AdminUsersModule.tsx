@@ -15,6 +15,9 @@ interface AdminUsersModuleProps {
   onDeleteUser?: (userId: string) => void;
 }
 
+import { useLocalStorageFilter } from '../../hooks/admin/useLocalStorageFilter';
+import { usePagination } from '../../hooks/admin/usePagination';
+
 export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
   allUsers = [],
   onImpersonateUser,
@@ -22,55 +25,19 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
   onUpdateUser,
   onDeleteUser
 }) => {
-  // Local state for users with localStorage filter
-  const [users, setUsers] = useState<UserAccount[]>(() => {
-    try {
-      const deletedIds = JSON.parse(localStorage.getItem('workperhour_deleted_users') || '[]').map((d: any) => String(d));
-      return (allUsers || []).filter(u => !deletedIds.includes(String(u.id)));
-    } catch {
-      return allUsers || [];
-    }
-  });
-
-  React.useEffect(() => {
-    try {
-      const deletedIds = JSON.parse(localStorage.getItem('workperhour_deleted_users') || '[]').map((d: any) => String(d));
-      setUsers((allUsers || []).filter(u => !deletedIds.includes(String(u.id))));
-    } catch {
-      setUsers(allUsers || []);
-    }
-  }, [allUsers]);
+  const [users, setUsers] = useLocalStorageFilter(allUsers, 'workperhour_deleted_users');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [verificationFilter, setVerificationFilter] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
-
-  // Inspection, editing, and modals state
+  
   const [inspectingUser, setInspectingUser] = useState<UserAccount | null>(null);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    email: string;
-    role: string;
-    title: string;
-    walletBalance: number;
-    hourlyRate: number;
-    verified: boolean;
-    status: 'active' | 'suspended' | 'restricted';
-  }>({ 
-    name: '', 
-    email: '', 
-    role: 'freelancer', 
-    title: '', 
-    walletBalance: 0, 
-    hourlyRate: 50, 
-    verified: false, 
-    status: 'active' 
+  const [editForm, setEditForm] = useState({ 
+    name: '', email: '', role: 'freelancer', title: '', walletBalance: 0, hourlyRate: 50, verified: false, status: 'active' as const
   });
 
   const filteredUsers = useMemo(() => {
@@ -93,11 +60,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({
     });
   }, [users, searchQuery, roleFilter, statusFilter, verificationFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredUsers.slice(start, start + itemsPerPage);
-  }, [filteredUsers, currentPage, itemsPerPage]);
+  const { currentPage, setCurrentPage, totalPages, paginatedData: paginatedUsers } = usePagination(filteredUsers, 8);
 
   const handleOpenEdit = (user: UserAccount) => {
     setEditingUser(user);
